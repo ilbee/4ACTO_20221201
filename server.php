@@ -59,7 +59,15 @@ do {
 			
 			switch ($result[1]) {
 				case 'GET':
-				    // répond au GET
+					$reponse = '<html><body>Hello World !</body></html>';
+				
+					$talkback = $result[3] . ' 200 OK' . "\n";
+					$talkback .= 'Server: MyPHPServer' . "\n";
+					$talkback .= 'Content-Type: text/html;charset=utf8' . "\n";
+					$talkback .= 'Content-Length: ' . strlen($reponse) . "\n";
+					$talkback .= "\n";
+					$talkback .= $reponse;
+					break;
 				default: 
 					$talkback = 'Unkown method';
 			}
