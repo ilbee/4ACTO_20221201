@@ -53,10 +53,17 @@ do {
         $talkback = "PHP: You said '$buf'.\n";
 
         // https://regex101.com/r/PsVm5C/1
-        $pattern = '/(([A-Z]+)?) (.*) (HTTP\/(([0-9]+).([0-9]+)))/';
+        $pattern = '([A-Z]+) (.*) (HTTP\/(([0-9]+).([0-9]+)))';
 
-        if (preg_match($pattern, $buf, $result)) {
-            var_dump($result);
+        if (preg_match('/' . $pattern . '/', $buf, $result)) {
+			
+			switch ($result[1]) {
+				case 'GET':
+				    // répond au GET
+				default: 
+					$talkback = 'Unkown method';
+			}
+			
         } else {
 			$talkback = 'Unable to read your request';
 		} 
