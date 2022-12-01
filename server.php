@@ -97,7 +97,9 @@ do {
                 break 2;
             default:
                 if (preg_match('/([0-9]+) ([0-9]+)/', $buf, $matches)) {
-                    $talkback = encode(($matches[1] + $matches[2]), $dynamicKey) . PHP_EOL;
+                    $result = ($matches[1] + $matches[2]);
+                    echo 'Resultat de ' . $matches[1] . '+' . $matches[2] . '=' . $result. PHP_EOL;
+                    $talkback = encode($result, $dynamicKey) . PHP_EOL;
                 } else {
                     $talkback = "Commande inconnue : $buf\n";
                 }
@@ -105,7 +107,7 @@ do {
         }
 
         socket_write($msgsock, $talkback, strlen($talkback));
-        echo "$buf\n";
+        echo "Received : $buf\n";
 
     } while (true);
     socket_close($msgsock);
