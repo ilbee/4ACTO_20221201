@@ -8,9 +8,42 @@ set_time_limit(0);
  * puissions voir ce que nous lisons au fur et à mesure. */
 ob_implicit_flush();
 
-$address = '127.0.0.1';
+function encode($string, $clef)
+{
+    $output = '';
+    foreach ( str_split($string) as $char ) {
+        $char = ord($char);
+        $char = $char + numerize_key($clef);
+        $output .= chr($char);
+    }
+
+    return base64_encode($output);
+}
+
+function numerize_key($key)
+{
+    $key = str_split($key);
+    $key = array_map('ord', $key);
+    $key = array_sum($key);
+    return $key;
+}
+
+function decode($input, $clef)
+{
+    $input = base64_decode($input);
+    $output = '';
+    foreach ( str_split($input) as $char ) {
+        $char = ord($char);
+        $char = $char - numerize_key($clef);
+        $output .= chr($char);
+    }
+
+    return $output;
+}
+
+//$address = '127.0.0.1';
 //$address = '10.0.1.182';
-//$address = '0.0.0.0';
+$address = '0.0.0.0';
 $port = 10000;
 
 if (($sock = socket_create(AF_INET, SOCK_STREAM, SOL_TCP)) === false) {
@@ -25,59 +58,55 @@ if (socket_listen($sock, 5) === false) {
     echo "socket_listen() a échoué : raison : " . socket_strerror(socket_last_error($sock)) . "\n";
 }
 
+$dynamicKey = '';
+for ($i=0;$i<30;$i++) {
+    $dynamicKey .= chr(rand(33,126));
+}
+
 do {
     if (($msgsock = socket_accept($sock)) === false) {
         echo "socket_accept() a échoué : raison : " . socket_strerror(socket_last_error($sock)) . "\n";
         break;
     }
     /* Send instructions. */
-    $msg = "\Bienvenue sur le serveur de test PHP.\n" .
-        "Pour quitter, tapez 'quit'. Pour éteindre le serveur, tapez 'shutdown'.\n";
+    $msg = "\Bienvenue sur le serveur de test PHP chiffré." . PHP_EOL .
+        'La clef de chiffrement est "' .$dynamicKey . '"' . PHP_EOL;
     socket_write($msgsock, $msg, strlen($msg));
 
     do {
-        if (false === ($buf = socket_read($msgsock, 2048, PHP_NORMAL_READ))) {
+        if (false === ($buf = socket_read($msgsock, 204800, PHP_NORMAL_READ))) {
             echo "socket_read() a échoué : raison : " . socket_strerror(socket_last_error($msgsock)) . "\n";
             break 2;
         }
         if (!$buf = trim($buf)) {
             continue;
         }
-        if ($buf == 'quit') {
-            break;
-        }
-        if ($buf == 'shutdown') {
-            socket_close($msgsock);
-            break 2;
-        }
-        $talkback = "PHP: You said '$buf'.\n";
 
-        // https://regex101.com/r/PsVm5C/1
-        $pattern = '([A-Z]+) (.*) (HTTP\/(([0-9]+).([0-9]+)))';
+        $buf = decode($buf, $dynamicKey);
 
-        if (preg_match('/' . $pattern . '/', $buf, $result)) {
-			
-			switch ($result[1]) {
-				case 'GET':
-					$reponse = '<html><body>Hello World !</body></html>';
-				
-					$talkback = $result[3] . ' 200 OK' . "\n";
-					$talkback .= 'Server: MyPHPServer' . "\n";
-					$talkback .= 'Content-Type: text/html;charset=utf8' . "\n";
-					$talkback .= 'Content-Length: ' . strlen($reponse) . "\n";
-					$talkback .= "\n";
-					$talkback .= $reponse;
-					break;
-				default: 
-					$talkback = 'Unkown method';
-			}
-			
-        } else {
-			$talkback = 'Unable to read your request';
-		} 
+        switch ($buf) {
+            case 'quit':
+                $talkback = "Au revoir !\n";
+                echo 'Client déconnecté' . PHP_EOL;
+                socket_write($msgsock, $talkback, strlen($talkback));
+                break 2;
+            case 'shutdown':
+                $talkback = "Au revoir !\n";
+                socket_write($msgsock, $talkback, strlen($talkback));
+                socket_close($msgsock);
+                break 2;
+            default:
+                if (preg_match('/([0-9]+) ([0-9]+)/', $buf, $matches)) {
+                    $talkback = encode(($matches[1] + $matches[2]), $dynamicKey) . PHP_EOL;
+                } else {
+                    $talkback = "Commande inconnue : $buf\n";
+                }
+                break;
+        }
 
         socket_write($msgsock, $talkback, strlen($talkback));
         echo "$buf\n";
+
     } while (true);
     socket_close($msgsock);
 } while (true);

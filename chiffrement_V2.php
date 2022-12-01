@@ -2,8 +2,18 @@
 $clef = $argv[1];
 $input = $argv[2];
 
-$encode = encode($input, $clef);
-$decode = decode($encode, $clef);
+$order = 'encode';
+if (!empty($argv[3])) {
+    $order = $argv[3];
+}
+
+if ($order == 'encode') {
+    $encode = encode($input, $clef);
+    $decode = decode($encode, $clef);
+} else {
+    $decode = decode($input, $clef);
+    $encode = encode($decode, $clef);
+}
 
 echo 'Valeur encodée : "'.$encode.'"';
 echo PHP_EOL;
